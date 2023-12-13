@@ -21,6 +21,7 @@ Our model checkpoints can be downloaded [here](https://drive.google.com/drive/fo
 
 
 ## 🔨 Usage
+🐣 Still working on it! ! ! ! 
 
 1. Clone this rep && Install python requirement
 
