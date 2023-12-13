@@ -1,0 +1,8 @@
+conda==4.11.0
+einops==0.6.0
+huggingface-hub==0.11.1
+librosa==0.8.1
+omegaconf==2.0.6
+SoundFile==0.10.3.post1
+torch==1.11.0+cu113
+torchaudio==0.11.0+cu113
