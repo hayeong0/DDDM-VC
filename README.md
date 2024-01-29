@@ -63,9 +63,10 @@ python3 inference.py \
 
 
 ## 💎 Acknowledgements
-- Our code is based on [Speech-Resynthesis](https://github.com/facebookresearch/speech-resynthesis), [DiffVC](https://github.com/huawei-noah/Speech-Backbones/tree/main/DiffVC), and [HiFiGAN](https://github.com/jik876/hifi-gan).
-
- 
+- [DiffVC](https://github.com/huawei-noah/Speech-Backbones/tree/main/DiffVC): for overall diffusion src code
+- [Speech-Resynthesis](https://github.com/facebookresearch/speech-resynthesis): for f0-vqvae
+- [HiFiGAN](https://github.com/jik876/hifi-gan): for vocoder
+- [torch-nansypp](https://github.com/revsic/torch-nansypp): for data augmentation
 
 ## License
 This work is licensed under a
