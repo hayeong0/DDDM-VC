@@ -15,8 +15,7 @@ import utils
 import transformers 
 import commons
 from modules_sf.modules import *
-from commons import init_weights, get_padding 
-
+from commons import init_weights, get_padding  
 
 class Wav2vec2(torch.nn.Module):
     def __init__(self, layer=12): 
@@ -128,8 +127,7 @@ class SynthesizerTrn(nn.Module):
 
 class DDDM(BaseModule):
     def __init__(self, n_feats, spk_dim, dec_dim, beta_min, beta_max, hps):
-        super(DDDM, self).__init__()
-
+        super(DDDM, self).__init__()  
         self.n_feats = n_feats
         self.spk_dim = spk_dim
         self.dec_dim = dec_dim
@@ -141,10 +139,40 @@ class DDDM(BaseModule):
                                       **hps.model)
         self.decoder = Diffusion(n_feats, dec_dim, spk_dim, beta_min, beta_max)
 
+    @torch.no_grad()
+    def forward(self, x, w2v_x, f0_x, x_lengths, n_timesteps, mode='ml'): 
+        x_mask = sequence_mask(x_lengths, x.size(2)).unsqueeze(1).to(x.dtype) 
+        spk, src_out, ftr_out = self.encoder(w2v_x, f0_x, x, x_lengths)
+        src_mean_x, ftr_mean_x = self.decoder.compute_diffused_mean(x, x_mask, src_out, ftr_out, 1.0)
+
+        b = x.shape[0]
+        max_length = int(x_lengths.max())
+        max_length_new = fix_len_compatibility(max_length)
+        x_mask_new = sequence_mask(x_lengths, max_length_new).unsqueeze(1).to(x.dtype)
+        src_new = torch.zeros((b, self.n_feats, max_length_new), dtype=x.dtype, device=x.device)
+        ftr_new = torch.zeros((b, self.n_feats, max_length_new), dtype=x.dtype, device=x.device)
+        src_x_new = torch.zeros((b, self.n_feats, max_length_new), dtype=x.dtype, device=x.device)
+        ftr_x_new = torch.zeros((b, self.n_feats, max_length_new), dtype=x.dtype, device=x.device)
+
+        for i in range(b):
+            src_new[i, :, :x_lengths[i]] = src_out[i, :, :x_lengths[i]]
+            ftr_new[i, :, :x_lengths[i]] = ftr_out[i, :, :x_lengths[i]]
+            src_x_new[i, :, :x_lengths[i]] = src_mean_x[i, :, :x_lengths[i]]
+            ftr_x_new[i, :, :x_lengths[i]] = ftr_mean_x[i, :, :x_lengths[i]]
+
+        z_src = src_x_new
+        z_ftr = ftr_x_new
+        start_n = torch.randn_like(src_x_new, device=src_x_new.device)
+        z_src += start_n
+        z_ftr += start_n
+
+        y_src, y_ftr = self.decoder(z_src, z_ftr, x_mask_new, src_new, ftr_new, spk, n_timesteps, mode)
+        y = (y_src + y_ftr)/2
+        enc_out = src_out + ftr_out
+        
+        return enc_out, src_out, ftr_out, y[:, :, :max_length]
     
-    def vc(self, x, w2v_x, f0_x, x_lengths, y, y_lengths, n_timesteps, mode='ml'):
-        x, x_lengths, w2v_x, f0_x = self.relocate_input([x, x_lengths, w2v_x, f0_x])
-        y, y_lengths = self.relocate_input([y, y_lengths])
+    def vc(self, x, w2v_x, f0_x, x_lengths, y, y_lengths, n_timesteps, mode='ml'): 
         x_mask = sequence_mask(x_lengths, x.size(2)).unsqueeze(1).to(x.dtype)
 
         out_enc, spk, src_out, ftr_out = self.encoder.voice_conversion(w2v_x, x_lengths, f0_x, y, y_lengths)
@@ -176,4 +204,19 @@ class DDDM(BaseModule):
         y = (y_src + y_ftr)/2
 
         return y[:, :, :max_length]
- 
+    
+    def compute_loss(self, x, w2v_x, f0_x, x_length): 
+        x_mask = sequence_mask(x_length, x.size(2)).unsqueeze(1).to(x.dtype)
+        spk, src_out, ftr_out = self.encoder(w2v_x, f0_x, x, x_length, mixup=True)
+
+        mixup = torch.randint(0, 2, (x.size(0),1,1)).to(x.device)
+
+        src_out_new = mixup*src_out[:x.size(0), :, :] + (1-mixup)*src_out[x.size(0):, :, :]
+        ftr_out_new = mixup*ftr_out[:x.size(0), :, :] + (1-mixup)*ftr_out[x.size(0):, :, :]
+
+        diff_loss = self.decoder.compute_loss(x, x_mask, src_out_new, ftr_out_new, spk)
+        enc_out = src_out[:x.size(0), :, :] + ftr_out[:x.size(0), :, :]
+        mel_loss = F.l1_loss(x, enc_out)
+
+        return diff_loss, mel_loss
+
