@@ -136,15 +136,26 @@ class Diffusion(BaseModule):
         c = 1.0 - self.get_gamma(0, t, p=2.0)
         return math.sqrt(a * b / c)
 
-    def compute_diffused_mean(self, x0, mask, src_out, ftr_out, t, use_torch=False): 
+    def compute_diffused_mean(self, x0, mask, src_out, ftr_out, t, use_torch=False):
+
         x0_weight = self.get_gamma(0, t, use_torch=use_torch)  
         mean_weight = 1.0 - x0_weight
         xt_src = x0 * x0_weight + src_out * mean_weight
         xt_ftr = x0 * x0_weight + ftr_out * mean_weight
-        return xt_src * mask, xt_ftr * mask 
-    
+        return xt_src * mask, xt_ftr * mask
+
+    def forward_diffusion(self, x0, mask, src_out, ftr_out, t):
+        xt_src, xt_ftr = self.compute_diffused_mean(x0, mask, src_out, ftr_out, t, use_torch=True)
+        variance = 1.0 - self.get_gamma(0, t, p=2.0, use_torch=True)
+        z = torch.randn(x0.shape, dtype=x0.dtype, device=x0.device, requires_grad=False)
+        xt_src = xt_src + z * torch.sqrt(variance)
+        xt_ftr = xt_ftr + z * torch.sqrt(variance)
+
+        return xt_src * mask, xt_ftr * mask, z * mask
+
     @torch.no_grad()
-    def reverse_diffusion(self, z_src, z_ftr, mask, src_out, ftr_out, spk, n_timesteps, mode):
+    def reverse_diffusion(self, z_src, z_ftr, mask, src_out, ftr_out, spk,
+                          n_timesteps, mode):
         h = 1.0 / n_timesteps
         xt_src = z_src * mask
         xt_ftr = z_ftr * mask
@@ -192,3 +203,21 @@ class Diffusion(BaseModule):
             return z_src, z_ftr
 
         return self.reverse_diffusion(z_src, z_ftr, mask, src_out, ftr_out, spk, n_timesteps, mode)
+
+    def loss_t(self, x0, mask, src_out, ftr_out, spk, t):
+        xt_src, xt_ftr, z = self.forward_diffusion(x0, mask, src_out, ftr_out, t)
+
+        z_estimation = self.estimator_src(xt_src, mask, src_out, spk, t)
+        z_estimation += self.estimator_ftr(xt_ftr, mask, ftr_out, spk, t)
+
+        z_estimation *= torch.sqrt(1.0 - self.get_gamma(0, t, p=2.0, use_torch=True))
+        loss = torch.sum((z_estimation + z) ** 2) / (torch.sum(mask) * self.n_feats)
+
+        return loss
+
+    def compute_loss(self, x0, mask, src_out, ftr_out, spk, offset=1e-5):
+        b = x0.shape[0]
+        t = torch.rand(b, dtype=x0.dtype, device=x0.device, requires_grad=False)
+        t = torch.clamp(t, offset, 1.0 - offset)
+
+        return self.loss_t(x0, mask, src_out, ftr_out, spk, t)
