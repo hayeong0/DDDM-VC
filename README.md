@@ -46,16 +46,16 @@ python3 inference.py \
     --output_dir './converted' \
     -t 6
 ```
-🎧 Test it on your own dataset and share your interesting results! :)
+🎧 Train and test it on your own dataset and share your interesting results! 🤗
 
 
 
 ## 🎓 Citation
 ```
-@article{choi2023diff,
-  title={Diff-HierVC: Diffusion-based Hierarchical Voice Conversion with Robust Pitch Generation and Masked Prior for Zero-shot Speaker Adaptation},
+@article{choi2023dddm,
+  title={DDDM-VC: Decoupled Denoising Diffusion Models with Disentangled Representation and Prior Mixup for Verified Robust Voice Conversion},
   author={Choi, Ha-Yeong and Lee, Sang-Hoon and Lee, Seong-Whan},
-  journal={arXiv preprint arXiv:2311.04693},
+  journal={arXiv preprint arXiv:2305.15816},
   year={2023}
 }
 ```
