@@ -108,7 +108,29 @@ class SynthesizerTrn(nn.Module):
 
         self.dec_f = Decoder(encoder_hidden_size, encoder_hidden_size, 5, 1, 8, mel_size=80, gin_channels=256)
         self.dec_s = Decoder(encoder_hidden_size, encoder_hidden_size, 5, 1, 8, mel_size=80, gin_channels=256) 
-     
+
+    def forward(self, w2v, f0_code, x_mel, length, mixup=False):
+        content = self.emb_c(w2v)
+
+        f0 = self.emb_f0(f0_code).transpose(1, 2)
+        f0 = F.interpolate(f0, content.shape[-1])
+
+        x_mask = torch.unsqueeze(commons.sequence_mask(length, x_mel.size(2)), 1).to(x_mel.dtype)
+        g = self.emb_g(x_mel, x_mask).unsqueeze(-1)
+
+        if mixup is True:
+            g_mixup = torch.cat([g, g[torch.randperm(g.size()[0])]], dim=0)
+            content = torch.cat([content, content], dim=0)
+            f0 = torch.cat([f0, f0], dim=0)
+            x_mask = torch.cat([x_mask, x_mask], dim=0)
+            y_f = self.dec_f(F.relu(content), x_mask, g=g_mixup)
+            y_s = self.dec_s(f0, x_mask, g=g_mixup)
+        else:
+            y_f = self.dec_f(F.relu(content), x_mask, g=g)
+            y_s = self.dec_s(f0, x_mask, g=g)
+
+        return g, y_s, y_f
+        
     def voice_conversion(self, w2v, x_length, f0_code, x_mel, length):
         y_mask = torch.unsqueeze(commons.sequence_mask(x_length, w2v.size(2)), 1).to(w2v.dtype)
 
