@@ -17,22 +17,53 @@ Our model checkpoints can be downloaded [here](https://drive.google.com/drive/fo
 
 - model_base.pth
 - voc_ckpt.pth
+- voc_bigvgan.pth
 - f0_vqvae.pth
 
 
-## 🔨 Usage
-🐣 Still working on it! ! ! ! 
 
+## ⚙️ Setup
 1. Clone this rep && Install python requirement
 
 ```
 git clone https://github.com/hayeong0/DDDM-VC.git
 pip install -r req*
+``` 
+2. Download the pre-trained model checkpoint from drive.
+
+## 🔨 Usage
+### Preprocess
+1. Data
+- Training requires both wav files and F0 features, which we extract using YAAPT through the script `./preprocess/extract_f0.py`.
+- After extracting F0, create a list of files with the path to each data item, as shown in the following example:
+```
+train_wav.txt
+/workspace/raid/dataset/LibriTTS_16k/train-clean-360/100/121669/100_121669_000001_000000.wav
+/workspace/raid/dataset/LibriTTS_16k/train-clean-360/100/121669/100_121669_000003_000000.wav
+
+train_f0.txt
+/workspace/raid/dataset/LibriTTS_f0_norm/train-clean-360/100/121669/100_121669_000001_000000.pt
+/workspace/raid/dataset/LibriTTS_f0_norm/train-clean-360/100/121669/100_121669_000003_000000.pt
 ```
 
-2. Download the pre-trained model checkpoint from drive.
-  
-3. Run `infer.sh`
+2. F0_VQVAE
+- We trained the f0_vqvae model using [SpeechResynthesis repository](https://github.com/facebookresearch/speech-resynthesis).
+
+
+### 🔍 Training
+- For training, prepare a file list with the following structure:
+```
+|-- filelist 
+|    |-- train_f0.txt
+|    |-- train_wav.txt
+|    |-- test_f0.txt
+|    `-- test_wav.txt
+```
+- Run `train_dddmvc.py`
+
+
+### 🔑 Inference
+- Run `infer.sh`
  
 ```
 bash infer.sh
@@ -46,6 +77,7 @@ python3 inference.py \
     --output_dir './converted' \
     -t 6
 ```
+
 🎧 Train and test it on your own dataset and share your interesting results! 🤗
 
 
