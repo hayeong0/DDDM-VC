@@ -84,11 +84,14 @@ python3 inference.py \
 
 ## 🎓 Citation
 ```
-@article{choi2023dddm,
-  title={DDDM-VC: Decoupled Denoising Diffusion Models with Disentangled Representation and Prior Mixup for Verified Robust Voice Conversion},
+@inproceedings{choi2024dddm,
+  title={Dddm-vc: Decoupled denoising diffusion models with disentangled representation and prior mixup for verified robust voice conversion},
   author={Choi, Ha-Yeong and Lee, Sang-Hoon and Lee, Seong-Whan},
-  journal={arXiv preprint arXiv:2305.15816},
-  year={2023}
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume={38},
+  number={16},
+  pages={17862--17870},
+  year={2024}
 }
 ```
 
