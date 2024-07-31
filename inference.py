@@ -96,10 +96,8 @@ def inference(a):
     try:
         f0 = get_yaapt_f0(audio.numpy())
     except:
-        f0 = np.zeros((1, audio.shape[-1] // 80), dtype=np.float32)
-        
-    f0_x = f0.copy()
-    f0_x = torch.log(torch.FloatTensor(f0_x+1)).cuda()
+        f0 = np.zeros((1, audio.shape[-1] // 80), dtype=np.float32) 
+ 
     ii = f0 != 0
     f0[ii] = (f0[ii] - f0[ii].mean()) / f0[ii].std() 
     f0 = torch.FloatTensor(f0).cuda()
